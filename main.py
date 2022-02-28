@@ -1,41 +1,26 @@
-import requests
+from VPN_tools.Insert_vpngate import VPN_connect
+import pandas as pd
 import sqlite3
+import shlex
+import subprocess as sp
 
 
-class VPN_connect:
-
-    def __init__(self):
-        """
-        Class for build new OpenVPN connect from free DB.
-        Free VPN download from https://vpngate.net
-        """
-        self.vpn_db = sqlite3.connect('./data_storage/vpngate.db')
-        pass
-
-    def new_vpn_address(self, save=True):
-        """
-        Download new VPN addresses from https://vpngate.net
-        :param save: bool, create tmp file with content of responce of not
-        """
-        req = requests.get('http://www.vpngate.net/api/iphone')
-        con = req.content.decode('UTF-8')
-        con = con.replace('*vpn_servers\r\n#', '')
-        final_arr = []
-        insert_str = []
-        
-        if save:
-            with open('pars.csv', 'w') as f:
-                f.write(con)
-        
-        con = con.split('\n')[1:-2]
-        for i in con:
-            val = i.split(',')
-            #insert_str += '('+','.join(val)+'), '
-        #self.vpn_db.execute(f'INSERT INTO vpngate_VALUES {insert_str}')
-        
 def main():
+    print('Start VPN_connect script...')
     vpn = VPN_connect()
-    vpn.new_vpn_address()
-        
+    sql = sqlite3.connect('./VPN_tools/DataStorage/vpngate.db')
+    df_info = pd.DataFrame(sql.execute('SELECT * FROM info').fetchall())
+    need_update = False
+    df_info.columns=['date', 'err']
+    df_info = df_info.loc[df_info['err'] == 0]
+    if pd.Timestamp(df_info['date'].values[-1])+ pd.Timedelta(days=1) >= pd.Timestamp.now():
+        need_update = True
+    if need_update:
+       vpn.requestForNewIPAddresses()
+       vpn.insertToSQLite()
+    args=shlex.split('rm parse.csv')
+    sp.Popen(args=args)
+
+
 if __name__ == '__main__':
     main()
