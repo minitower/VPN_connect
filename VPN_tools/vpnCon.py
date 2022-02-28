@@ -1,6 +1,7 @@
 import sqlite3
 import pandas as pd
-
+import subprocess as sp
+import shlex
 
 class VPN_connect:
 
@@ -15,7 +16,7 @@ class VPN_connect:
                 will be maximised in decision vector
                 Default: ping
         """
-        self.sql = sqlite3.connect('./VPN_tools/DataStorage/vpngate.vpngate.db')
+        self.sql = sqlite3.connect('./VPN_tools/DataStorage/vpngate.db')
         self.vpngate_df = pd.read_sql_query('SELECT * FROM vpngate', self.sql)
         self.sortby = sortby
 
@@ -25,5 +26,18 @@ class VPN_connect:
         OpenVPN connect
         """
         self.vpngate_df = self.vpngate_df.sort_values(by='ping')
-        self.ip_con = self.vpngate_df.iloc[0]
-        print(self.ip_con)
+        self.ovpn_path = self.ovpn_path.iloc[0]['path_to_ovpn']
+        
+    def buildOvpnConnect():
+        """
+        Func for build connection from local machine
+        to host IP address via OpenVPN protocol
+        """
+        self.args = shlex.split(f'sudo openvpn {self.ovpn_path}')
+        self.proc = sp.Popen(args=self.args)
+
+    def destroyOvpnConnect():
+        """
+        Func for terminate ovpn connection
+        """
+        self.proc.kill()

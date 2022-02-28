@@ -10,14 +10,17 @@ def main():
     vpn = VPN_connect()
     sql = sqlite3.connect('./VPN_tools/DataStorage/vpngate.db')
     df_info = pd.DataFrame(sql.execute('SELECT * FROM info').fetchall())
-    need_update = False
+    need_update = True
     df_info.columns=['date', 'err']
     df_info = df_info.loc[df_info['err'] == 0]
-    if pd.Timestamp(df_info['date'].values[-1])+ pd.Timedelta(days=1) >= pd.Timestamp.now():
+    print(pd.Timestamp(df_info['date'].values[-1]))
+    if pd.Timestamp(df_info['date'].values[-1])+ pd.Timedelta(days=1) <= pd.Timestamp.now():
+        print('UPDATE')
         need_update = True
     if need_update:
        vpn.requestForNewIPAddresses()
        vpn.insertToSQLite()
+    
     args=shlex.split('rm parse.csv')
     sp.Popen(args=args)
 
