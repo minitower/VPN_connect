@@ -1,29 +1,32 @@
-from VPN_tools.Insert_vpngate import VPN_connect
-import pandas as pd
-import sqlite3
-import shlex
-import subprocess as sp
+from vpnCon import VPN_connect
 
 
-def main():
-    print('Start VPN_connect script...')
+def main(max_retry = 100):
+    """
+    Main function of VPN_connect script. Run
+    for automate process of VPN connect
+
+    Args:
+        max_retry (type: int): number of trying
+    connetion from host to VPN server
+    """
     vpn = VPN_connect()
-    sql = sqlite3.connect('./VPN_tools/DataStorage/vpngate.db')
-    df_info = pd.DataFrame(sql.execute('SELECT * FROM info').fetchall())
-    need_update = True
-    df_info.columns=['date', 'err']
-    df_info = df_info.loc[df_info['err'] == 0]
-    print(pd.Timestamp(df_info['date'].values[-1]))
-    if pd.Timestamp(df_info['date'].values[-1])+ pd.Timedelta(days=1) <= pd.Timestamp.now():
-        print('UPDATE')
-        need_update = True
-    if need_update:
-       vpn.requestForNewIPAddresses()
-       vpn.insertToSQLite()
-    
-    args=shlex.split('rm parse.csv')
-    sp.Popen(args=args)
-
+    vpn.requestForNewIPAddresses()
+    vpn.parseCSVTable()
+    ovpn_conf, ip_address, cc, speed = vpn.findRelevantVPN()
+    vpn.buildOvpnConnect(ovpn_conf=ovpn_conf)
+    check = vpn.checkVPNConnect()
+    if check != 0:
+        while check != 0:
+            print('IP the same, retry')
+            ovpn_conf, ip_address, cc, speed = vpn.findRelevantVPN()
+            vpn.buildOvpnConnect(ovpn_conf=ovpn_conf)
+            check = vpn.checkVPNConnect()
+    if check == 0:
+        print('Connection established sucsessfull!')
+        print(f'Your IP: {ip_address}')
+        print(f'Country: {cc}')
+        print(f'Current speed: {speed}')
 
 if __name__ == '__main__':
-    main()
+    main(max_retry=100)
